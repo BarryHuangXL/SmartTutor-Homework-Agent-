@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SmartTutor - Homework Agent</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #0b1220;
+        --panel: #101a30;
+        --text: #e8eefc;
+        --muted: #a9b6d6;
+        --accent: #4c8dff;
+        --bubble-user: #1b2b52;
+        --bubble-ai: #16223f;
+        --border: rgba(255, 255, 255, 0.08);
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+          "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+        background: radial-gradient(1200px 600px at 20% 0%, #14234a 0%, var(--bg) 60%);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 24px 16px;
+      }
+      .header {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+      .title {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .title h1 {
+        font-size: 18px;
+        margin: 0;
+        letter-spacing: 0.2px;
+      }
+      .title .sub {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      input,
+      button {
+        border: 1px solid var(--border);
+        background: rgba(16, 26, 48, 0.8);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 14px;
+        outline: none;
+      }
+      input::placeholder {
+        color: rgba(169, 182, 214, 0.7);
+      }
+      button {
+        cursor: pointer;
+        transition: transform 0.03s ease, border-color 0.12s ease;
+      }
+      button:hover {
+        border-color: rgba(76, 141, 255, 0.6);
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      .panel {
+        background: rgba(16, 26, 48, 0.7);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+      .chat {
+        height: calc(100vh - 220px);
+        min-height: 420px;
+        max-height: 720px;
+        overflow: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .msg {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .role {
+        width: 84px;
+        color: var(--muted);
+        font-size: 12px;
+        padding-top: 6px;
+        flex: 0 0 auto;
+      }
+      .bubble {
+        white-space: pre-wrap;
+        line-height: 1.4;
+        padding: 12px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        max-width: 760px;
+      }
+      .bubble.user {
+        background: rgba(27, 43, 82, 0.65);
+      }
+      .bubble.ai {
+        background: rgba(22, 34, 63, 0.65);
+      }
+      .composer {
+        display: flex;
+        gap: 10px;
+        padding: 12px;
+        border-top: 1px solid var(--border);
+      }
+      .composer input {
+        flex: 1;
+      }
+      .status {
+        font-size: 12px;
+        color: var(--muted);
+        padding: 10px 14px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .pill {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #3ddc97;
+        box-shadow: 0 0 0 3px rgba(61, 220, 151, 0.12);
+      }
+      .dot.busy {
+        background: #ffd166;
+        box-shadow: 0 0 0 3px rgba(255, 209, 102, 0.14);
+      }
+      .small {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      @media (max-width: 720px) {
+        .role {
+          display: none;
+        }
+        .chat {
+          height: calc(100vh - 240px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="header">
+        <div class="title">
+          <h1>SmartTutor</h1>
+          <div class="sub">A multi-turn homework tutoring agent</div>
+        </div>
+        <div class="controls">
+          <input id="model" placeholder="Model (default: deepseek-r1)" style="width: 240px" />
+          <button id="newChatBtn" title="Start a new session">New Chat</button>
+          <button id="summaryBtn" title="Summarise conversation">Summarize</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div id="chat" class="chat"></div>
+        <div class="composer">
+          <input id="input" placeholder="Ask a homework question..." />
+          <button id="sendBtn">Send</button>
+        </div>
+        <div class="status">
+          <div class="pill"><span id="dot" class="dot"></span><span id="statusText">Ready.</span></div>
+          <div class="small">Tip: use New Chat if context gets messy.</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const chatEl = document.getElementById("chat");
+      const inputEl = document.getElementById("input");
+      const sendBtn = document.getElementById("sendBtn");
+      const summaryBtn = document.getElementById("summaryBtn");
+      const newChatBtn = document.getElementById("newChatBtn");
+      const statusText = document.getElementById("statusText");
+      const dot = document.getElementById("dot");
+      const modelEl = document.getElementById("model");
+
+      let busy = false;
+
+      function setBusy(isBusy, text) {
+        busy = isBusy;
+        statusText.textContent = text;
+        dot.className = isBusy ? "dot busy" : "dot";
+        sendBtn.disabled = isBusy;
+        summaryBtn.disabled = isBusy;
+        newChatBtn.disabled = isBusy;
+        inputEl.disabled = isBusy;
+      }
+
+      function append(role, text) {
+        const row = document.createElement("div");
+        row.className = "msg";
+        const r = document.createElement("div");
+        r.className = "role";
+        r.textContent = role;
+        const bubble = document.createElement("div");
+        bubble.className = "bubble " + (role.toLowerCase().includes("user") ? "user" : "ai");
+        bubble.textContent = text;
+        row.appendChild(r);
+        row.appendChild(bubble);
+        chatEl.appendChild(row);
+        chatEl.scrollTop = chatEl.scrollHeight;
+      }
+
+      async function postJson(url, body) {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body ?? {}),
+        });
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error(`HTTP ${res.status}: ${t}`);
+        }
+        return await res.json();
+      }
+
+      async function newChat() {
+        setBusy(true, "Starting new chat...");
+        try {
+          const model = modelEl.value.trim() || null;
+          await postJson("/api/new_chat", { model });
+          append("Assistant", "Welcome to SmartTutor, your personal homework tutor. What can I help you today?");
+          setBusy(false, "Ready.");
+        } catch (e) {
+          append("Assistant", "Failed to start new chat: " + (e?.message ?? String(e)));
+          setBusy(false, "Ready.");
+        }
+      }
+
+      async function send() {
+        if (busy) return;
+        const text = inputEl.value.trim();
+        if (!text) return;
+        inputEl.value = "";
+        append("User", text);
+        setBusy(true, "Calling API...");
+        try {
+          const model = modelEl.value.trim() || null;
+          const data = await postJson("/api/chat", { message: text, model });
+          append("Assistant", data.answer || "(empty)");
+          setBusy(false, "Ready.");
+        } catch (e) {
+          append("Assistant", "Request failed: " + (e?.message ?? String(e)));
+          setBusy(false, "Ready.");
+        }
+      }
+
+      async function summarize() {
+        if (busy) return;
+        append("User", "Can you summarise our conversation so far?");
+        setBusy(true, "Summarizing...");
+        try {
+          const data = await postJson("/api/summarize");
+          append("Assistant", data.answer || "(empty)");
+          setBusy(false, "Ready.");
+        } catch (e) {
+          append("Assistant", "Request failed: " + (e?.message ?? String(e)));
+          setBusy(false, "Ready.");
+        }
+      }
+
+      sendBtn.addEventListener("click", send);
+      summaryBtn.addEventListener("click", summarize);
+      newChatBtn.addEventListener("click", newChat);
+      inputEl.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") send();
+      });
+
+      newChat();
+    </script>
+  </body>
+</html>
+
