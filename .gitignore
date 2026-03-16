@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.log
+
+# secrets
+.env
+*.key
+
+# Cursor / IDE
+.cursor/
+agent-transcripts/
+terminals/
+.vscode/
+
