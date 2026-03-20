@@ -115,9 +115,9 @@ class HomeworkAgent:
                         content = chunk["choices"][0].get("delta", {}).get("content")
                         if not content:
                             continue
-                        if on_token is not None:
-                            on_token(content)
-                        collected_content += content
+                    if on_token is not None:
+                        on_token(content)
+                    collected_content += content
             else:
                 if self._client_mode == "new":
                     collected_content = response.choices[0].message.content
@@ -175,7 +175,7 @@ def main():
             
             answer = agent.ask(user_input, stream=True, on_token=lambda t: print(t, end="", flush=True))
             if not answer.endswith("\n"):
-                print("")
+                print(answer)
             print("")
             
         except KeyboardInterrupt:
