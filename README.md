@@ -66,7 +66,7 @@ python gui.py
 ```
 
 ### Option C: CLI
-
+(If both Option A and Option B are incompatible with your computer environment, you can use Option C.)
 Interactive chat:
 
 ```bash
